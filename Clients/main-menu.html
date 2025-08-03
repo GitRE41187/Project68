@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Menu - Robot Control Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/Styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-robot me-2"></i>Robot Control Lab
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span id="userName">ผู้ใช้</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>โปรไฟล์</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>ตั้งค่า</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container main-container">
+        <!-- Welcome Card -->
+        <div class="welcome-card">
+            <div class="card-body text-center">
+                <h1 class="display-4 mb-3">ยินดีต้อนรับสู่ Robot Control Lab</h1>
+                <p class="lead text-muted">เลือกฟังก์ชันที่ต้องการใช้งาน</p>
+                
+                <!-- Quick Stats -->
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">12</div>
+                        <div class="stat-label">การจองวันนี้</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">8</div>
+                        <div class="stat-label">การรันโค้ด</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">5</div>
+                        <div class="stat-label">ชั่วโมงใช้งาน</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">ผู้ใช้งานออนไลน์</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Grid -->
+        <div class="menu-grid">
+            <!-- Dashboard -->
+            <a href="dashboard-overview.html" class="menu-card">
+                <div class="card-body">
+                    <div class="menu-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h3 class="menu-title">แดชบอร์ด</h3>
+                    <p class="menu-description">ดูภาพรวมระบบ สถานะอุปกรณ์ และสถิติการใช้งาน</p>
+                    <span class="badge bg-success status-badge">พร้อมใช้งาน</span>
+                </div>
+            </a>
+
+            <!-- Booking -->
+            <a href="booking.html" class="menu-card">
+                <div class="card-body">
+                    <div class="menu-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3 class="menu-title">จองห้องปฏิบัติการ</h3>
+                    <p class="menu-description">จองเวลาใช้งานห้องปฏิบัติการและดูปฏิทินการจอง</p>
+                    <span class="badge bg-info status-badge">ว่าง</span>
+                </div>
+            </a>
+
+            <!-- Robot Control -->
+            <a href="robot-control.html" class="menu-card">
+                <div class="card-body">
+                    <div class="menu-icon">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <h3 class="menu-title">ควบคุมหุ่นยนต์</h3>
+                    <p class="menu-description">เขียนโค้ด Python และควบคุมหุ่นยนต์ผ่านเว็บ</p>
+                    <span class="badge bg-success status-badge">พร้อมใช้งาน</span>
+                </div>
+            </a>
+
+            <!-- Camera -->
+            <a href="camera.html" class="menu-card">
+                <div class="card-body">
+                    <div class="menu-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <h3 class="menu-title">กล้องถ่ายทอดสด</h3>
+                    <p class="menu-description">ดูภาพถ่ายทอดสดจากกล้องและควบคุมมุมกล้อง</p>
+                    <span class="badge bg-success status-badge">เชื่อมต่อแล้ว</span>
+                </div>
+            </a>
+
+            <!-- History -->
+            <a href="history.html" class="menu-card">
+                <div class="card-body">
+                    <div class="menu-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3 class="menu-title">ประวัติการใช้งาน</h3>
+                    <p class="menu-description">ดูประวัติการจอง การรันโค้ด และสถิติการใช้งาน</p>
+                    <span class="badge bg-secondary status-badge">ข้อมูล</span>
+                </div>
+            </a>
+
+            <!-- Help -->
+            <a href="help.html" class="menu-card">
+                <div class="card-body">
+                    <div class="menu-icon">
+                        <i class="fas fa-question-circle"></i>
+                    </div>
+                    <h3 class="menu-title">ความช่วยเหลือ</h3>
+                    <p class="menu-description">คู่มือการใช้งาน คำถามที่พบบ่อย และการติดต่อ</p>
+                    <span class="badge bg-primary status-badge">คู่มือ</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Check authentication
+        if (!auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Update user interface
+        auth.updateUserInterface();
+        
+        // Handle logout
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.logout();
+        });
+    </script>
+</body>
+</html> 

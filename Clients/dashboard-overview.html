@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Overview - Robot Control Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/Styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a href="main-menu.html" class="btn back-button me-3">
+                <i class="fas fa-arrow-left me-2"></i>กลับไปเมนูหลัก
+            </a>
+            
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard Overview
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span id="userName">ผู้ใช้</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>โปรไฟล์</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>ตั้งค่า</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">แดชบอร์ด</h1>
+            <div class="text-muted">
+                <i class="fas fa-clock me-1"></i>
+                <span id="currentTime"></span>
+            </div>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="status-icon status-online">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h5>หุ่นยนต์</h5>
+                    <p class="text-success mb-0">พร้อมใช้งาน</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="status-icon status-online">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h5>กล้อง</h5>
+                    <p class="text-success mb-0">เชื่อมต่อแล้ว</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="status-icon status-online">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                    <h5>การเชื่อมต่อ</h5>
+                    <p class="text-success mb-0">เสถียร</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="status-icon status-busy">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h5>ผู้ใช้งานปัจจุบัน</h5>
+                    <p class="text-warning mb-0" id="currentUser">ไม่มี</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>การดำเนินการด่วน</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="booking.html" class="btn btn-primary">
+                                <i class="fas fa-calendar-plus me-2"></i>จองห้องปฏิบัติการ
+                            </a>
+                            <a href="robot-control.html" class="btn btn-success">
+                                <i class="fas fa-play me-2"></i>เริ่มควบคุมหุ่นยนต์
+                            </a>
+                            <a href="camera.html" class="btn btn-info">
+                                <i class="fas fa-video me-2"></i>เปิดกล้อง
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>สถิติการใช้งาน</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <h4 class="text-primary">12</h4>
+                                <small class="text-muted">การจอง</small>
+                            </div>
+                            <div class="col-4">
+                                <h4 class="text-success">8</h4>
+                                <small class="text-muted">การรันโค้ด</small>
+                            </div>
+                            <div class="col-4">
+                                <h4 class="text-info">5</h4>
+                                <small class="text-muted">ชั่วโมงใช้งาน</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-activity me-2"></i>กิจกรรมล่าสุด</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>เวลา</th>
+                                        <th>กิจกรรม</th>
+                                        <th>ผู้ใช้</th>
+                                        <th>สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>14:30</td>
+                                        <td>จองห้องปฏิบัติการ</td>
+                                        <td>ผู้ใช้ 1</td>
+                                        <td><span class="badge bg-success">เสร็จสิ้น</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>15:00</td>
+                                        <td>รันโค้ดควบคุมหุ่นยนต์</td>
+                                        <td>ผู้ใช้ 2</td>
+                                        <td><span class="badge bg-success">สำเร็จ</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>15:30</td>
+                                        <td>เปิดกล้องถ่ายทอดสด</td>
+                                        <td>ผู้ใช้ 3</td>
+                                        <td><span class="badge bg-info">กำลังใช้งาน</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Check authentication
+        if (!auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Update user interface
+        auth.updateUserInterface();
+        
+        // Handle logout
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.logout();
+        });
+
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleString('th-TH');
+        }
+
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+    </script>
+</body>
+</html> 

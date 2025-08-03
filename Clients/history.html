@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ประวัติการใช้งาน - Robot Control Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/Styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a href="main-menu.html" class="btn back-button me-3">
+                <i class="fas fa-arrow-left me-2"></i>กลับไปเมนูหลัก
+            </a>
+            
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-history me-2"></i>ประวัติการใช้งาน
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span id="userName">ผู้ใช้</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>โปรไฟล์</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>ตั้งค่า</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">ประวัติการใช้งาน</h1>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="stats-number text-primary">24</div>
+                    <div class="stats-label">การจองทั้งหมด</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="stats-number text-success">18</div>
+                    <div class="stats-label">การรันโค้ด</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="stats-number text-info">12.5</div>
+                    <div class="stats-label">ชั่วโมงใช้งาน</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="stats-number text-warning">5</div>
+                    <div class="stats-label">การบันทึกวิดีโอ</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-filter me-2"></i>กรองข้อมูล</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="historyDate" class="form-label">วันที่</label>
+                                <input type="date" class="form-control" id="historyDate">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="historyType" class="form-label">ประเภท</label>
+                                <select class="form-select" id="historyType">
+                                    <option value="all">ทั้งหมด</option>
+                                    <option value="booking">การจอง</option>
+                                    <option value="execution">การรันโค้ด</option>
+                                    <option value="camera">การใช้งานกล้อง</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="historyStatus" class="form-label">สถานะ</label>
+                                <select class="form-select" id="historyStatus">
+                                    <option value="all">ทั้งหมด</option>
+                                    <option value="success">สำเร็จ</option>
+                                    <option value="failed">ล้มเหลว</option>
+                                    <option value="cancelled">ยกเลิก</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button class="btn btn-primary" onclick="filterHistory()">
+                                        <i class="fas fa-filter me-2"></i>กรอง
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-table me-2"></i>ประวัติการใช้งาน</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>วันที่</th>
+                                        <th>เวลา</th>
+                                        <th>ประเภท</th>
+                                        <th>รายละเอียด</th>
+                                        <th>สถานะ</th>
+                                        <th>การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody">
+                                    <tr>
+                                        <td>2024-01-15</td>
+                                        <td>14:30</td>
+                                        <td><i class="fas fa-calendar me-1"></i>การจอง</td>
+                                        <td>จองห้องปฏิบัติการ 1 ชั่วโมง</td>
+                                        <td><span class="badge bg-success">เสร็จสิ้น</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetails(1)">ดูรายละเอียด</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>2024-01-15</td>
+                                        <td>15:00</td>
+                                        <td><i class="fas fa-code me-1"></i>การรันโค้ด</td>
+                                        <td>รันโค้ดควบคุมการเคลื่อนที่</td>
+                                        <td><span class="badge bg-success">สำเร็จ</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetails(2)">ดูรายละเอียด</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>2024-01-14</td>
+                                        <td>10:15</td>
+                                        <td><i class="fas fa-calendar me-1"></i>การจอง</td>
+                                        <td>จองห้องปฏิบัติการ 30 นาที</td>
+                                        <td><span class="badge bg-warning">ยกเลิก</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetails(3)">ดูรายละเอียด</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>2024-01-14</td>
+                                        <td>16:45</td>
+                                        <td><i class="fas fa-video me-1"></i>การใช้งานกล้อง</td>
+                                        <td>บันทึกวิดีโอ 5 นาที</td>
+                                        <td><span class="badge bg-success">สำเร็จ</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetails(4)">ดูรายละเอียด</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>2024-01-13</td>
+                                        <td>09:30</td>
+                                        <td><i class="fas fa-code me-1"></i>การรันโค้ด</td>
+                                        <td>ทดสอบเซนเซอร์ระยะทาง</td>
+                                        <td><span class="badge bg-danger">ล้มเหลว</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetails(5)">ดูรายละเอียด</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-stream me-2"></i>ไทม์ไลน์กิจกรรม</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="activity-timeline">
+                            <div class="activity-item">
+                                <div class="activity-time">15 มกราคม 2024, 15:00</div>
+                                <div class="activity-title">รันโค้ดควบคุมหุ่นยนต์</div>
+                                <div class="activity-description">รันโค้ด Python สำหรับควบคุมการเคลื่อนที่ของหุ่นยนต์ สำเร็จ</div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-time">15 มกราคม 2024, 14:30</div>
+                                <div class="activity-title">จองห้องปฏิบัติการ</div>
+                                <div class="activity-description">จองเวลาใช้งานห้องปฏิบัติการ 1 ชั่วโมง สำหรับทดสอบหุ่นยนต์</div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-time">14 มกราคม 2024, 16:45</div>
+                                <div class="activity-title">บันทึกวิดีโอ</div>
+                                <div class="activity-description">บันทึกวิดีโอการทดสอบหุ่นยนต์ 5 นาที</div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-time">14 มกราคม 2024, 10:15</div>
+                                <div class="activity-title">ยกเลิกการจอง</div>
+                                <div class="activity-description">ยกเลิกการจองห้องปฏิบัติการ 30 นาที</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Details Modal -->
+    <div class="modal fade" id="detailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">รายละเอียดการใช้งาน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Check authentication
+        if (!auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Update user interface
+        auth.updateUserInterface();
+        
+        // Handle logout
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.logout();
+        });
+
+        // Filter history function
+        function filterHistory() {
+            const date = document.getElementById('historyDate').value;
+            const type = document.getElementById('historyType').value;
+            const status = document.getElementById('historyStatus').value;
+            
+            // Simulate filtering
+            showAlert(`กรองประวัติ: ${date} - ${type} - ${status}`, 'info');
+            
+            // In a real application, you would make an API call here
+            // and update the table with filtered results
+        }
+
+        // View details function
+        function viewDetails(id) {
+            const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+            const modalBody = document.getElementById('modalBody');
+            
+            // Sample details data
+            const details = {
+                1: {
+                    title: 'การจองห้องปฏิบัติการ',
+                    date: '15 มกราคม 2024',
+                    time: '14:30 - 15:30',
+                    duration: '1 ชั่วโมง',
+                    purpose: 'ทดสอบการควบคุมหุ่นยนต์',
+                    status: 'เสร็จสิ้น',
+                    notes: 'การจองสำเร็จและใช้งานตามเวลาที่กำหนด'
+                },
+                2: {
+                    title: 'การรันโค้ดควบคุมหุ่นยนต์',
+                    date: '15 มกราคม 2024',
+                    time: '15:00 - 15:15',
+                    duration: '15 นาที',
+                    purpose: 'ทดสอบการเคลื่อนที่ของหุ่นยนต์',
+                    status: 'สำเร็จ',
+                    notes: 'หุ่นยนต์เคลื่อนที่ตามคำสั่งได้ถูกต้อง'
+                },
+                3: {
+                    title: 'การจองห้องปฏิบัติการ (ยกเลิก)',
+                    date: '14 มกราคม 2024',
+                    time: '10:15 - 10:45',
+                    duration: '30 นาที',
+                    purpose: 'ทดสอบเซนเซอร์',
+                    status: 'ยกเลิก',
+                    notes: 'ยกเลิกเนื่องจากติดธุระด่วน'
+                },
+                4: {
+                    title: 'การบันทึกวิดีโอ',
+                    date: '14 มกราคม 2024',
+                    time: '16:45 - 16:50',
+                    duration: '5 นาที',
+                    purpose: 'บันทึกการทดสอบหุ่นยนต์',
+                    status: 'สำเร็จ',
+                    notes: 'บันทึกวิดีโอการทดสอบได้สำเร็จ'
+                },
+                5: {
+                    title: 'การรันโค้ดทดสอบเซนเซอร์',
+                    date: '13 มกราคม 2024',
+                    time: '09:30 - 09:35',
+                    duration: '5 นาที',
+                    purpose: 'ทดสอบเซนเซอร์ระยะทาง',
+                    status: 'ล้มเหลว',
+                    notes: 'เซนเซอร์ไม่ตอบสนอง อาจเกิดจากปัญหาการเชื่อมต่อ'
+                }
+            };
+            
+            const detail = details[id];
+            if (detail) {
+                modalBody.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>ข้อมูลทั่วไป</h6>
+                            <table class="table table-sm">
+                                <tr><td><strong>หัวข้อ:</strong></td><td>${detail.title}</td></tr>
+                                <tr><td><strong>วันที่:</strong></td><td>${detail.date}</td></tr>
+                                <tr><td><strong>เวลา:</strong></td><td>${detail.time}</td></tr>
+                                <tr><td><strong>ระยะเวลา:</strong></td><td>${detail.duration}</td></tr>
+                                <tr><td><strong>วัตถุประสงค์:</strong></td><td>${detail.purpose}</td></tr>
+                                <tr><td><strong>สถานะ:</strong></td><td><span class="badge bg-success">${detail.status}</span></td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>หมายเหตุ</h6>
+                            <p>${detail.notes}</p>
+                            
+                            <h6>ไฟล์ที่เกี่ยวข้อง</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-file-code me-2"></i><a href="#">robot_control_${id}.py</a></li>
+                                <li><i class="fas fa-file-video me-2"></i><a href="#">recording_${id}.mp4</a></li>
+                                <li><i class="fas fa-file-text me-2"></i><a href="#">log_${id}.txt</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            modal.show();
+        }
+
+        // Show alert function
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer') || createAlertContainer();
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            alertContainer.appendChild(alert);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 3000);
+        }
+
+        function createAlertContainer() {
+            const container = document.createElement('div');
+            container.id = 'alertContainer';
+            container.className = 'position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1055';
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // Make functions globally available
+        window.filterHistory = filterHistory;
+        window.viewDetails = viewDetails;
+    </script>
+</body>
+</html> 

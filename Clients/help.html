@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ความช่วยเหลือ - Robot Control Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/Styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a href="main-menu.html" class="btn back-button me-3">
+                <i class="fas fa-arrow-left me-2"></i>กลับไปเมนูหลัก
+            </a>
+            
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-question-circle me-2"></i>ความช่วยเหลือ
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span id="userName">ผู้ใช้</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>โปรไฟล์</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>ตั้งค่า</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">ความช่วยเหลือ</h1>
+        </div>
+
+        <!-- Quick Help Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card help-section">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>วิธีการจอง</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li>ไปที่แท็บ "จองห้องปฏิบัติการ"</li>
+                            <li>กรอกข้อมูลการจอง</li>
+                            <li>เลือกวันที่และเวลา</li>
+                            <li>ยืนยันการจอง</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card help-section">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-code me-2"></i>การเขียนโค้ด</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>ใช้ Python 3.7+</li>
+                            <li>มี Library robot สำหรับควบคุมหุ่นยนต์</li>
+                            <li>ฟังก์ชันหลัก: forward(), backward(), turn_left(), turn_right()</li>
+                            <li>เซนเซอร์: distance_sensor(), light_sensor()</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card help-section">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>ข้อควรระวัง</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>ตรวจสอบการเชื่อมต่อก่อนใช้งาน</li>
+                            <li>ทดสอบโค้ดในโหมดจำลองก่อน</li>
+                            <li>ไม่เกินเวลาที่จองไว้</li>
+                            <li>หยุดหุ่นยนต์เมื่อเสร็จสิ้น</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Help Sections -->
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Getting Started -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>เริ่มต้นใช้งาน</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>ขั้นตอนการใช้งาน</h6>
+                                <ol>
+                                    <li><span class="step-number">1</span>เข้าสู่ระบบด้วยบัญชีของคุณ</li>
+                                    <li><span class="step-number">2</span>เลือกฟังก์ชันที่ต้องการใช้งาน</li>
+                                    <li><span class="step-number">3</span>จองเวลาใช้งานห้องปฏิบัติการ</li>
+                                    <li><span class="step-number">4</span>เขียนโค้ดควบคุมหุ่นยนต์</li>
+                                    <li><span class="step-number">5</span>รันโค้ดและดูผลลัพธ์</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>ข้อกำหนดระบบ</h6>
+                                <ul>
+                                    <li>เว็บเบราว์เซอร์: Chrome, Firefox, Safari, Edge</li>
+                                    <li>การเชื่อมต่ออินเทอร์เน็ต</li>
+                                    <li>ความรู้พื้นฐาน Python</li>
+                                    <li>บัญชีผู้ใช้งานที่ลงทะเบียนแล้ว</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Robot Control Guide -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-robot me-2"></i>คู่มือการควบคุมหุ่นยนต์</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>ฟังก์ชันการควบคุมพื้นฐาน</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ฟังก์ชัน</th>
+                                        <th>คำอธิบาย</th>
+                                        <th>ตัวอย่าง</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>forward(duration)</code></td>
+                                        <td>เดินหน้า</td>
+                                        <td><code>robot.forward(2)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>backward(duration)</code></td>
+                                        <td>ถอยหลัง</td>
+                                        <td><code>robot.backward(1)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>turn_left(duration)</code></td>
+                                        <td>เลี้ยวซ้าย</td>
+                                        <td><code>robot.turn_left(0.5)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>turn_right(duration)</code></td>
+                                        <td>เลี้ยวขวา</td>
+                                        <td><code>robot.turn_right(0.5)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>stop()</code></td>
+                                        <td>หยุด</td>
+                                        <td><code>robot.stop()</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h6 class="mt-3">ฟังก์ชันเซนเซอร์</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ฟังก์ชัน</th>
+                                        <th>คำอธิบาย</th>
+                                        <th>ค่าที่ได้</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>distance_sensor()</code></td>
+                                        <td>วัดระยะทาง</td>
+                                        <td>เซนติเมตร (0-200)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>light_sensor()</code></td>
+                                        <td>วัดความเข้มแสง</td>
+                                        <td>0-1023 (0=มืด, 1023=สว่าง)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>คำถามที่พบบ่อย (FAQ)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="toggleFAQ(this)">
+                                <i class="fas fa-chevron-down me-2"></i>
+                                ฉันสามารถจองห้องปฏิบัติการได้นานเท่าไร?
+                            </button>
+                            <div class="faq-answer">
+                                คุณสามารถจองห้องปฏิบัติการได้ตั้งแต่ 30 นาที ถึง 2 ชั่วโมงต่อครั้ง และไม่เกิน 4 ชั่วโมงต่อวัน
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="toggleFAQ(this)">
+                                <i class="fas fa-chevron-down me-2"></i>
+                                ฉันสามารถยกเลิกการจองได้หรือไม่?
+                            </button>
+                            <div class="faq-answer">
+                                ได้ คุณสามารถยกเลิกการจองได้ก่อนเวลาเริ่มต้น 1 ชั่วโมง โดยไปที่หน้า "ประวัติการใช้งาน" และคลิกปุ่ม "ยกเลิก"
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="toggleFAQ(this)">
+                                <i class="fas fa-chevron-down me-2"></i>
+                                หุ่นยนต์ไม่ตอบสนองต่อคำสั่ง ควรทำอย่างไร?
+                            </button>
+                            <div class="faq-answer">
+                                กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต และลองรันโค้ดใหม่ หากยังไม่แก้ไข กรุณาติดต่อผู้ดูแลระบบ
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="toggleFAQ(this)">
+                                <i class="fas fa-chevron-down me-2"></i>
+                                ฉันสามารถบันทึกโค้ดที่เขียนไว้ได้หรือไม่?
+                            </button>
+                            <div class="faq-answer">
+                                ได้ คุณสามารถบันทึกโค้ดเป็นไฟล์ .py ได้โดยคลิกปุ่ม "บันทึกโค้ด" ในหน้า "ควบคุมหุ่นยนต์"
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="toggleFAQ(this)">
+                                <i class="fas fa-chevron-down me-2"></i>
+                                กล้องไม่แสดงภาพ ควรทำอย่างไร?
+                            </button>
+                            <div class="faq-answer">
+                                กรุณาตรวจสอบการเชื่อมต่อกล้อง และลองรีเฟรชหน้าเว็บ หากยังไม่แก้ไข กรุณาติดต่อผู้ดูแลระบบ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Contact Information -->
+                <div class="contact-info mb-4">
+                    <div class="contact-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <h5>ติดต่อผู้ดูแลระบบ</h5>
+                    <p>หากคุณพบปัญหาหรือต้องการความช่วยเหลือเพิ่มเติม</p>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <i class="fas fa-envelope mb-2"></i>
+                            <p class="mb-0">อีเมล</p>
+                            <small>support@robotlab.com</small>
+                        </div>
+                        <div class="col-6">
+                            <i class="fas fa-phone mb-2"></i>
+                            <p class="mb-0">โทรศัพท์</p>
+                            <small>02-123-4567</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-link me-2"></i>ลิงก์ด่วน</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="booking.html" class="btn btn-outline-primary">
+                                <i class="fas fa-calendar-plus me-2"></i>จองห้องปฏิบัติการ
+                            </a>
+                            <a href="robot-control.html" class="btn btn-outline-success">
+                                <i class="fas fa-gamepad me-2"></i>ควบคุมหุ่นยนต์
+                            </a>
+                            <a href="camera.html" class="btn btn-outline-info">
+                                <i class="fas fa-video me-2"></i>กล้องถ่ายทอดสด
+                            </a>
+                            <a href="history.html" class="btn btn-outline-secondary">
+                                <i class="fas fa-history me-2"></i>ประวัติการใช้งาน
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-server me-2"></i>สถานะระบบ</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <span class="badge bg-success me-2">●</span>
+                            <span>เซิร์ฟเวอร์</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-success me-2">●</span>
+                            <span>หุ่นยนต์</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-success me-2">●</span>
+                            <span>กล้อง</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-success me-2">●</span>
+                            <span>ฐานข้อมูล</span>
+                        </div>
+                        <hr>
+                        <small class="text-muted">
+                            อัปเดตล่าสุด: <span id="lastUpdate"></span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Check authentication
+        if (!auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Update user interface
+        auth.updateUserInterface();
+        
+        // Handle logout
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.logout();
+        });
+
+        // Toggle FAQ function
+        function toggleFAQ(button) {
+            const answer = button.nextElementSibling;
+            const icon = button.querySelector('i');
+            
+            if (answer.classList.contains('show')) {
+                answer.classList.remove('show');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                answer.classList.add('show');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        }
+
+        // Update last update time
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleString('th-TH');
+        }
+
+        updateLastUpdate();
+        setInterval(updateLastUpdate, 60000); // Update every minute
+    </script>
+</body>
+</html> 
