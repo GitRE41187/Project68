@@ -175,7 +175,7 @@ if __name__ == "__main__":
             return;
         }
 
-        this.addLogMessage('กำลังอัปโหลดโค้ด...', 'info');
+        this.addLogMessage('กำลังตรวจสอบสิทธิ์การใช้งาน...', 'info');
         
         try {
             const response = await auth.apiRequest('/robot/upload', {
@@ -186,11 +186,16 @@ if __name__ == "__main__":
             const data = await response.json();
 
             if (response.ok) {
-                this.addLogMessage('อัปโหลดโค้ดสำเร็จ', 'success');
-                this.addLogMessage('เริ่มรันโค้ด...', 'info');
-                this.simulateRobotExecution(code);
+                this.addLogMessage('อัปโหลดโค้ดสำเร็จและเริ่มรันบนหุ่นยนต์', 'success');
+                this.addLogMessage('กำลังรันโค้ดบน Raspberry Pi...', 'info');
+                this.startRealTimeMonitoring();
             } else {
-                this.addLogMessage(data.message || 'เกิดข้อผิดพลาดในการอัปโหลด', 'error');
+                if (response.status === 403) {
+                    this.addLogMessage('คุณไม่มีสิทธิ์ใช้งานหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน', 'error');
+                    this.showBookingReminder();
+                } else {
+                    this.addLogMessage(data.message || 'เกิดข้อผิดพลาดในการอัปโหลด', 'error');
+                }
             }
         } catch (error) {
             console.error('Upload error:', error);
@@ -226,8 +231,140 @@ if __name__ == "__main__":
         executeNextCommand();
     }
 
-    stopRobot() {
-        this.addLogMessage('หยุดหุ่นยนต์', 'warning');
+    async stopRobot() {
+        try {
+            this.addLogMessage('กำลังหยุดหุ่นยนต์...', 'info');
+            
+            const response = await auth.apiRequest('/robot/stop', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.addLogMessage('หยุดหุ่นยนต์แล้ว', 'success');
+                this.updateRobotStatus(data.robotStatus);
+            } else {
+                if (response.status === 403) {
+                    this.addLogMessage('คุณไม่มีสิทธิ์ควบคุมหุ่นยนต์ในเวลานี้', 'error');
+                } else {
+                    this.addLogMessage(data.message || 'เกิดข้อผิดพลาดในการหยุดหุ่นยนต์', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('Stop robot error:', error);
+            this.addLogMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+        }
+    }
+
+    async startRealTimeMonitoring() {
+        // Start monitoring robot status every 2 seconds
+        this.monitoringInterval = setInterval(async () => {
+            try {
+                const response = await auth.apiRequest('/robot/status');
+                const data = await response.json();
+
+                if (response.ok) {
+                    this.updateRobotStatus(data.robotStatus);
+                    this.updateConnectionStatus(data);
+                }
+            } catch (error) {
+                console.error('Monitoring error:', error);
+            }
+        }, 2000);
+    }
+
+    updateRobotStatus(status) {
+        if (!status) return;
+
+        // Update status indicators
+        const statusElements = document.querySelectorAll('.robot-status');
+        statusElements.forEach(element => {
+            const statusType = element.dataset.status;
+            const badge = element.querySelector('.badge');
+            
+            if (statusType === 'direction') {
+                badge.textContent = status.direction || 'หยุด';
+                badge.className = `badge ${this.getStatusColor(status.direction)}`;
+            } else if (statusType === 'speed') {
+                badge.textContent = `${status.speed || 0}%`;
+            } else if (statusType === 'distance') {
+                badge.textContent = `${status.distance || 0} cm`;
+            } else if (statusType === 'light') {
+                badge.textContent = status.light_level || 0;
+            }
+        });
+    }
+
+    updateConnectionStatus(data) {
+        const connectionStatus = document.getElementById('connectionStatus');
+        if (connectionStatus) {
+            if (data.robot === 'online') {
+                connectionStatus.innerHTML = '<span class="badge bg-success">●</span> เชื่อมต่อแล้ว';
+            } else {
+                connectionStatus.innerHTML = '<span class="badge bg-danger">●</span> ไม่สามารถเชื่อมต่อได้';
+            }
+        }
+
+        // Update booking status
+        const bookingStatus = document.getElementById('bookingStatus');
+        if (bookingStatus) {
+            if (data.hasValidBooking) {
+                bookingStatus.innerHTML = '<span class="badge bg-success">●</span> มีสิทธิ์ใช้งาน';
+            } else {
+                bookingStatus.innerHTML = '<span class="badge bg-warning">●</span> ไม่มีสิทธิ์ใช้งาน';
+            }
+        }
+    }
+
+    getStatusColor(direction) {
+        switch (direction) {
+            case 'forward': return 'bg-success';
+            case 'backward': return 'bg-info';
+            case 'left': return 'bg-warning';
+            case 'right': return 'bg-warning';
+            case 'stop': return 'bg-secondary';
+            default: return 'bg-secondary';
+        }
+    }
+
+    showBookingReminder() {
+        const reminder = document.createElement('div');
+        reminder.className = 'alert alert-warning alert-dismissible fade show';
+        reminder.innerHTML = `
+            <strong>ไม่มีสิทธิ์ใช้งาน!</strong> คุณต้องจองเวลาก่อนใช้งานหุ่นยนต์
+            <br><br>
+            <a href="booking.html" class="btn btn-primary btn-sm">จองเวลาตอนนี้</a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(reminder, container.firstChild);
+    }
+
+    async sendControlCommand(command, speed = 50, duration = null) {
+        try {
+            const response = await auth.apiRequest('/robot/control', {
+                method: 'POST',
+                body: JSON.stringify({ command, speed, duration })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.addLogMessage(`คำสั่ง ${command} ถูกส่งไปยังหุ่นยนต์แล้ว`, 'success');
+                this.updateRobotStatus(data.robotStatus);
+            } else {
+                if (response.status === 403) {
+                    this.addLogMessage('คุณไม่มีสิทธิ์ควบคุมหุ่นยนต์ในเวลานี้', 'error');
+                } else {
+                    this.addLogMessage(data.message || 'เกิดข้อผิดพลาดในการส่งคำสั่ง', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('Control command error:', error);
+            this.addLogMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+        }
     }
 
     saveCode() {
@@ -270,10 +407,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update user interface
     auth.updateUserInterface();
     
+    // Start monitoring robot status
+    robotController.startRealTimeMonitoring();
+    
     // Handle logout
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
         e.preventDefault();
         auth.logout();
+    });
+    
+    // Cleanup monitoring on page unload
+    window.addEventListener('beforeunload', () => {
+        if (robotController.monitoringInterval) {
+            clearInterval(robotController.monitoringInterval);
+        }
     });
 });
 

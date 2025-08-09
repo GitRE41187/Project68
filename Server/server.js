@@ -373,6 +373,14 @@ app.post('/api/robot/upload', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'กรุณาใส่โค้ด' });
         }
 
+        // Check if user has valid booking for current time
+        const hasValidBooking = await checkUserBooking(userId);
+        if (!hasValidBooking) {
+            return res.status(403).json({ 
+                message: 'คุณไม่มีสิทธิ์ใช้งานหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน' 
+            });
+        }
+
         const connection = await pool.getConnection();
         
         // Record execution
@@ -383,13 +391,40 @@ app.post('/api/robot/upload', authenticateToken, async (req, res) => {
 
         connection.release();
 
-        // Here you would typically send the code to Raspberry Pi
-        // For now, we'll simulate the process
+        // Send code to Raspberry Pi
+        try {
+            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
+            const response = await fetch(`${raspberryPiUrl}/api/robot/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code: code,
+                    user_id: userId
+                })
+            });
 
-        res.json({
-            message: 'อัปโหลดโค้ดสำเร็จ',
-            executionId: result.insertId
-        });
+            const piResponse = await response.json();
+            
+            if (response.ok) {
+                res.json({
+                    message: 'อัปโหลดโค้ดสำเร็จและเริ่มรันบนหุ่นยนต์',
+                    executionId: result.insertId,
+                    robotStatus: piResponse.status
+                });
+            } else {
+                res.status(500).json({ 
+                    message: 'เกิดข้อผิดพลาดในการส่งโค้ดไปยังหุ่นยนต์',
+                    error: piResponse.error 
+                });
+            }
+        } catch (piError) {
+            console.error('Raspberry Pi communication error:', piError);
+            res.status(500).json({ 
+                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
+            });
+        }
 
     } catch (error) {
         console.error('Robot upload error:', error);
@@ -397,18 +432,223 @@ app.post('/api/robot/upload', authenticateToken, async (req, res) => {
     }
 });
 
+// Check if user has valid booking for current time
+async function checkUserBooking(userId) {
+    try {
+        const connection = await pool.getConnection();
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().split(' ')[0];
+        
+        const [bookings] = await connection.execute(
+            `SELECT * FROM bookings 
+             WHERE userId = ? 
+             AND bookingDate = ? 
+             AND status = 'confirmed'
+             AND startTime <= ? 
+             AND startTime + INTERVAL duration MINUTE > ?`,
+            [userId, currentDate, currentTime, currentTime]
+        );
+        
+        connection.release();
+        return bookings.length > 0;
+    } catch (error) {
+        console.error('Error checking user booking:', error);
+        return false;
+    }
+}
+
 app.get('/api/robot/status', authenticateToken, async (req, res) => {
     try {
-        // Simulate robot status
-        res.json({
-            robot: 'online',
-            camera: 'online',
-            connection: 'stable',
-            currentUser: req.user.userId
-        });
+        // Check if user has valid booking
+        const hasValidBooking = await checkUserBooking(req.user.userId);
+        
+        // Get robot status from Raspberry Pi
+        try {
+            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
+            const response = await fetch(`${raspberryPiUrl}/api/robot/status`);
+            const piResponse = await response.json();
+            
+            if (response.ok) {
+                res.json({
+                    robot: 'online',
+                    camera: 'online',
+                    connection: 'stable',
+                    currentUser: req.user.userId,
+                    hasValidBooking: hasValidBooking,
+                    robotStatus: piResponse.status
+                });
+            } else {
+                res.json({
+                    robot: 'offline',
+                    camera: 'offline',
+                    connection: 'unstable',
+                    currentUser: req.user.userId,
+                    hasValidBooking: hasValidBooking,
+                    error: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้'
+                });
+            }
+        } catch (piError) {
+            res.json({
+                robot: 'offline',
+                camera: 'offline',
+                connection: 'unstable',
+                currentUser: req.user.userId,
+                hasValidBooking: hasValidBooking,
+                error: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้'
+            });
+        }
     } catch (error) {
         console.error('Robot status error:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงสถานะ' });
+    }
+});
+
+app.post('/api/robot/control', authenticateToken, async (req, res) => {
+    try {
+        const { command, speed, duration } = req.body;
+        const userId = req.user.userId;
+
+        // Check if user has valid booking
+        const hasValidBooking = await checkUserBooking(userId);
+        if (!hasValidBooking) {
+            return res.status(403).json({ 
+                message: 'คุณไม่มีสิทธิ์ควบคุมหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน' 
+            });
+        }
+
+        // Send command to Raspberry Pi
+        try {
+            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
+            const response = await fetch(`${raspberryPiUrl}/api/robot/control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    command: command,
+                    speed: speed || 50,
+                    duration: duration,
+                    user_id: userId
+                })
+            });
+
+            const piResponse = await response.json();
+            
+            if (response.ok) {
+                res.json({
+                    message: `คำสั่ง ${command} ถูกส่งไปยังหุ่นยนต์แล้ว`,
+                    robotStatus: piResponse.status
+                });
+            } else {
+                res.status(500).json({ 
+                    message: 'เกิดข้อผิดพลาดในการส่งคำสั่งไปยังหุ่นยนต์',
+                    error: piResponse.error 
+                });
+            }
+        } catch (piError) {
+            console.error('Raspberry Pi communication error:', piError);
+            res.status(500).json({ 
+                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
+            });
+        }
+
+    } catch (error) {
+        console.error('Robot control error:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการควบคุมหุ่นยนต์' });
+    }
+});
+
+app.post('/api/robot/stop', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // Check if user has valid booking
+        const hasValidBooking = await checkUserBooking(userId);
+        if (!hasValidBooking) {
+            return res.status(403).json({ 
+                message: 'คุณไม่มีสิทธิ์ควบคุมหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน' 
+            });
+        }
+
+        // Send stop command to Raspberry Pi
+        try {
+            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
+            const response = await fetch(`${raspberryPiUrl}/api/robot/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId
+                })
+            });
+
+            const piResponse = await response.json();
+            
+            if (response.ok) {
+                res.json({
+                    message: 'หยุดหุ่นยนต์แล้ว',
+                    robotStatus: piResponse.status
+                });
+            } else {
+                res.status(500).json({ 
+                    message: 'เกิดข้อผิดพลาดในการหยุดหุ่นยนต์',
+                    error: piResponse.error 
+                });
+            }
+        } catch (piError) {
+            console.error('Raspberry Pi communication error:', piError);
+            res.status(500).json({ 
+                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
+            });
+        }
+
+    } catch (error) {
+        console.error('Robot stop error:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการหยุดหุ่นยนต์' });
+    }
+});
+
+app.get('/api/robot/sensors', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // Check if user has valid booking
+        const hasValidBooking = await checkUserBooking(userId);
+        if (!hasValidBooking) {
+            return res.status(403).json({ 
+                message: 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลเซนเซอร์ในเวลานี้ กรุณาจองเวลาก่อน' 
+            });
+        }
+
+        // Get sensor data from Raspberry Pi
+        try {
+            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
+            const response = await fetch(`${raspberryPiUrl}/api/robot/sensors`);
+            const piResponse = await response.json();
+            
+            if (response.ok) {
+                res.json({
+                    success: true,
+                    sensors: piResponse.sensors
+                });
+            } else {
+                res.status(500).json({ 
+                    message: 'เกิดข้อผิดพลาดในการดึงข้อมูลเซนเซอร์',
+                    error: piResponse.error 
+                });
+            }
+        } catch (piError) {
+            console.error('Raspberry Pi communication error:', piError);
+            res.status(500).json({ 
+                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
+            });
+        }
+
+    } catch (error) {
+        console.error('Robot sensors error:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลเซนเซอร์' });
     }
 });
 
