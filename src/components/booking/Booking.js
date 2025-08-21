@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaCalendarAlt, FaClock, FaUser, FaRobot, FaCheck, FaTimes } from 'react-icons/fa';
+import './Booking.css';
 
 const Booking = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -7,6 +8,8 @@ const Booking = () => {
   const [selectedLab, setSelectedLab] = useState('');
   const [duration, setDuration] = useState(1);
   const [purpose, setPurpose] = useState('');
+  const [bookings, setBookings] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const labs = [
     { id: 'A', name: 'ห้องปฏิบัติการ A', status: 'available', capacity: 4 },
@@ -17,6 +20,13 @@ const Booking = () => {
 
   const timeSlots = [
     '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'
+  ];
+
+  // Sample existing bookings for demonstration
+  const existingBookings = [
+    { date: '2024-01-15', time: '09:00', lab: 'A', duration: 2, user: 'John Doe' },
+    { date: '2024-01-15', time: '14:00', lab: 'B', duration: 1, user: 'Jane Smith' },
+    { date: '2024-01-16', time: '10:00', lab: 'A', duration: 3, user: 'Bob Johnson' }
   ];
 
   const generateCalendarDays = () => {
@@ -54,18 +64,89 @@ const Booking = () => {
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
+    setSelectedTime(''); // Reset time when date changes
   };
 
-  const handleSubmit = (e) => {
+  const handleTimeSelect = (time) => {
+    setSelectedTime(time);
+  };
+
+  const isTimeSlotBooked = (date, time, lab) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return existingBookings.some(booking => 
+      booking.date === dateStr && 
+      booking.lab === lab && 
+      booking.time === time
+    );
+  };
+
+  const isTimeSlotAvailable = (date, time, lab) => {
+    if (!date || !time || !lab) return false;
+    
+    const dateStr = date.toISOString().split('T')[0];
+    const selectedTimeIndex = timeSlots.indexOf(time);
+    
+    // Check if any part of the duration conflicts with existing bookings
+    for (let i = 0; i < duration; i++) {
+      const checkTime = timeSlots[selectedTimeIndex + i];
+      if (!checkTime) return false; // Duration extends beyond available time slots
+      
+      if (existingBookings.some(booking => 
+        booking.date === dateStr && 
+        booking.lab === lab && 
+        booking.time === checkTime
+      )) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle booking submission
-    console.log('Booking submitted:', {
-      date: selectedDate,
-      time: selectedTime,
-      lab: selectedLab,
-      duration,
-      purpose
-    });
+    
+    if (!selectedDate || !selectedTime || !selectedLab || !purpose) {
+      alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+      return;
+    }
+
+    if (!isTimeSlotAvailable(selectedDate, selectedTime, selectedLab)) {
+      alert('ช่วงเวลาที่เลือกไม่ว่าง กรุณาเลือกเวลาอื่น');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const newBooking = {
+        id: Date.now(),
+        date: selectedDate.toISOString().split('T')[0],
+        time: selectedTime,
+        lab: selectedLab,
+        duration,
+        purpose,
+        user: 'Current User',
+        status: 'confirmed'
+      };
+
+      setBookings(prev => [...prev, newBooking]);
+      
+      // Reset form
+      setSelectedTime('');
+      setSelectedLab('');
+      setDuration(1);
+      setPurpose('');
+      
+      alert('จองห้องปฏิบัติการสำเร็จ!');
+    } catch (error) {
+      alert('เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const calendarDays = generateCalendarDays();
@@ -176,17 +257,31 @@ const Booking = () => {
 
                 <div className="mb-3">
                   <label className="form-label">เวลาเริ่มต้น</label>
-                  <select 
-                    className="form-select" 
-                    value={selectedTime} 
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    required
-                  >
-                    <option value="">เลือกเวลา</option>
-                    {timeSlots.map(time => (
-                      <option key={time} value={time}>{time}</option>
-                    ))}
-                  </select>
+                  <div className="time-slots">
+                    {timeSlots.map(time => {
+                      const isBooked = selectedLab && isTimeSlotBooked(selectedDate, time, selectedLab);
+                      const isAvailable = selectedLab && isTimeSlotAvailable(selectedDate, time, selectedLab);
+                      const isSelected = selectedTime === time;
+                      
+                      return (
+                        <div
+                          key={time}
+                          className={`time-slot ${isSelected ? 'selected' : ''} ${
+                            isBooked ? 'booked' : isAvailable ? 'available' : ''
+                          }`}
+                          onClick={() => {
+                            if (!isBooked && selectedLab) {
+                              handleTimeSelect(time);
+                            }
+                          }}
+                          style={{ cursor: isBooked ? 'not-allowed' : 'pointer' }}
+                        >
+                          {time}
+                          {isBooked && <small className="d-block text-danger">ไม่ว่าง</small>}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="mb-3">
@@ -216,8 +311,22 @@ const Booking = () => {
                   ></textarea>
                 </div>
 
-                <button type="submit" className="btn btn-primary w-100">
-                  <FaCheck className="me-2" />จองห้องปฏิบัติการ
+                <button 
+                  type="submit" 
+                  className="btn btn-primary w-100"
+                  disabled={isSubmitting || !selectedDate || !selectedTime || !selectedLab || !purpose}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      กำลังจอง...
+                    </>
+                  ) : (
+                    <>
+                      <FaCheck className="me-2" />
+                      จองห้องปฏิบัติการ
+                    </>
+                  )}
                 </button>
               </form>
             </div>
@@ -239,6 +348,36 @@ const Booking = () => {
               ))}
             </div>
           </div>
+
+          {/* Existing Bookings for Selected Date */}
+          {selectedDate && (
+            <div className="card mt-3">
+              <div className="card-header">
+                <h6 className="mb-0">
+                  <FaClock className="me-2" />
+                  การจองวันที่ {selectedDate.toLocaleDateString('th-TH')}
+                </h6>
+              </div>
+              <div className="card-body">
+                {existingBookings
+                  .filter(booking => booking.date === selectedDate.toISOString().split('T')[0])
+                  .map(booking => (
+                    <div key={booking.id} className="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                      <div>
+                        <small className="text-muted d-block">{booking.time} - {booking.duration} ชม.</small>
+                        <span className="fw-bold">{labs.find(lab => lab.id === booking.lab)?.name}</span>
+                      </div>
+                      <span className="badge bg-info">{booking.user}</span>
+                    </div>
+                  ))}
+                {existingBookings.filter(booking => 
+                  booking.date === selectedDate.toISOString().split('T')[0]
+                ).length === 0 && (
+                  <p className="text-muted text-center mb-0">ไม่มีรายการจองในวันที่เลือก</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>

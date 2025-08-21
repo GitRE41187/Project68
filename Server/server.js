@@ -7,12 +7,15 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+}));
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Database configuration
 const dbConfig = {
@@ -26,7 +29,7 @@ const dbConfig = {
 };
 
 // JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Create database connection pool
 const pool = mysql.createPool(dbConfig);
@@ -46,6 +49,23 @@ async function initializeDatabase() {
                 phone VARCHAR(20),
                 userType ENUM('student', 'teacher', 'researcher', 'other') NOT NULL,
                 password VARCHAR(255) NOT NULL,
+                avatar VARCHAR(255),
+                isActive BOOLEAN DEFAULT TRUE,
+                lastLogin TIMESTAMP NULL,
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Create labs table
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS labs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                description TEXT,
+                capacity INT DEFAULT 4,
+                status ENUM('available', 'maintenance', 'occupied') DEFAULT 'available',
+                equipment TEXT,
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
@@ -56,6 +76,7 @@ async function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS bookings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 userId INT NOT NULL,
+                labId INT NOT NULL,
                 bookingDate DATE NOT NULL,
                 startTime TIME NOT NULL,
                 duration INT NOT NULL,
@@ -63,7 +84,8 @@ async function initializeDatabase() {
                 status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (labId) REFERENCES labs(id) ON DELETE CASCADE
             )
         `);
 
@@ -72,65 +94,128 @@ async function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS robot_executions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 userId INT NOT NULL,
+                labId INT NOT NULL,
                 code TEXT NOT NULL,
-                status ENUM('running', 'completed', 'failed') DEFAULT 'running',
+                status ENUM('running', 'completed', 'failed', 'stopped') DEFAULT 'running',
                 result TEXT,
-                executionTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+                executionTime INT DEFAULT 0,
+                startedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completedAt TIMESTAMP NULL,
+                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (labId) REFERENCES labs(id) ON DELETE CASCADE
             )
         `);
 
-        // Create sessions table
+        // Create camera_sessions table
         await connection.execute(`
-            CREATE TABLE IF NOT EXISTS sessions (
+            CREATE TABLE IF NOT EXISTS camera_sessions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 userId INT NOT NULL,
-                token VARCHAR(500) NOT NULL,
-                expiresAt TIMESTAMP NOT NULL,
+                labId INT NOT NULL,
+                sessionType ENUM('stream', 'recording', 'snapshot') NOT NULL,
+                status ENUM('active', 'completed', 'failed') DEFAULT 'active',
+                startTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                endTime TIMESTAMP NULL,
+                duration INT DEFAULT 0,
+                filePath VARCHAR(255),
+                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (labId) REFERENCES labs(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Create activity_logs table
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                userId INT NOT NULL,
+                action VARCHAR(100) NOT NULL,
+                details TEXT,
+                ipAddress VARCHAR(45),
+                userAgent TEXT,
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
             )
         `);
 
+        // Insert default labs if they don't exist
+        await connection.execute(`
+            INSERT IGNORE INTO labs (id, name, description, capacity, status) VALUES
+            (1, 'ห้องปฏิบัติการ A', 'ห้องปฏิบัติการควบคุมหุ่นยนต์พื้นฐาน', 4, 'available'),
+            (2, 'ห้องปฏิบัติการ B', 'ห้องปฏิบัติการควบคุมหุ่นยนต์ขั้นสูง', 6, 'available'),
+            (3, 'ห้องปฏิบัติการ C', 'ห้องปฏิบัติการทดสอบระบบ', 4, 'maintenance'),
+            (4, 'ห้องปฏิบัติการ D', 'ห้องปฏิบัติการวิจัย', 8, 'available')
+        `);
+
+        // Insert default admin user if it doesn't exist
+        const [adminUsers] = await connection.execute('SELECT id FROM users WHERE email = ?', ['admin@robotlab.com']);
+        if (adminUsers.length === 0) {
+            const hashedPassword = await bcrypt.hash('admin123', 12);
+            await connection.execute(`
+                INSERT INTO users (firstName, lastName, email, phone, userType, password) VALUES
+                ('Admin', 'System', 'admin@robotlab.com', '0812345678', 'other', ?)
+            `, [hashedPassword]);
+        }
+
         connection.release();
-        console.log('Database initialized successfully');
+        console.log('✅ Database initialized successfully');
     } catch (error) {
-        console.error('Database initialization error:', error);
+        console.error('❌ Database initialization error:', error);
     }
 }
 
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ message: 'Access token required' });
-    }
-
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        
-        // Check if session exists in database
-        const connection = await pool.getConnection();
-        const [sessions] = await connection.execute(
-            'SELECT * FROM sessions WHERE token = ? AND expiresAt > NOW()',
-            [token]
-        );
-        connection.release();
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
 
-        if (sessions.length === 0) {
-            return res.status(401).json({ message: 'Invalid or expired session' });
+        if (!token) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Access token required' 
+            });
         }
 
+        const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
         next();
     } catch (error) {
-        return res.status(403).json({ message: 'Invalid token' });
+        return res.status(403).json({ 
+            success: false,
+            message: 'Invalid or expired token' 
+        });
     }
 };
 
-// Routes
+// Log activity middleware
+const logActivity = async (userId, action, details = null, req = null) => {
+    try {
+        const connection = await pool.getConnection();
+        await connection.execute(
+            'INSERT INTO activity_logs (userId, action, details, ipAddress, userAgent) VALUES (?, ?, ?, ?, ?)',
+            [
+                userId, 
+                action, 
+                details, 
+                req?.ip || null, 
+                req?.headers['user-agent'] || null
+            ]
+        );
+        connection.release();
+    } catch (error) {
+        console.error('Activity logging error:', error);
+    }
+};
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        success: true, 
+        message: 'Robot Control Lab API is running',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0'
+    });
+});
 
 // Authentication routes
 app.post('/api/auth/register', async (req, res) => {
@@ -139,15 +224,24 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Validation
         if (!firstName || !lastName || !email || !userType || !password) {
-            return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'กรุณากรอกข้อมูลให้ครบถ้วน' 
+            });
         }
 
         if (password !== confirmPassword) {
-            return res.status(400).json({ message: 'รหัสผ่านไม่ตรงกัน' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'รหัสผ่านไม่ตรงกัน' 
+            });
         }
 
         if (password.length < 8) {
-            return res.status(400).json({ message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' 
+            });
         }
 
         // Check if email already exists
@@ -159,7 +253,10 @@ app.post('/api/auth/register', async (req, res) => {
 
         if (existingUsers.length > 0) {
             connection.release();
-            return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'อีเมลนี้ถูกใช้งานแล้ว' 
+            });
         }
 
         // Hash password
@@ -173,14 +270,21 @@ app.post('/api/auth/register', async (req, res) => {
 
         connection.release();
 
+        // Log activity
+        await logActivity(result.insertId, 'user_registered', 'New user registration');
+
         res.status(201).json({ 
+            success: true,
             message: 'สมัครสมาชิกสำเร็จ',
             userId: result.insertId 
         });
 
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' });
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' 
+        });
     }
 });
 
@@ -190,7 +294,10 @@ app.post('/api/auth/login', async (req, res) => {
 
         // Validation
         if (!email || !password) {
-            return res.status(400).json({ message: 'กรุณากรอกอีเมลและรหัสผ่าน' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'กรุณากรอกอีเมลและรหัสผ่าน' 
+            });
         }
 
         // Find user
@@ -202,7 +309,10 @@ app.post('/api/auth/login', async (req, res) => {
 
         if (users.length === 0) {
             connection.release();
-            return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+            return res.status(401).json({ 
+                success: false,
+                message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' 
+            });
         }
 
         const user = users[0];
@@ -211,8 +321,17 @@ app.post('/api/auth/login', async (req, res) => {
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
             connection.release();
-            return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+            return res.status(401).json({ 
+                success: false,
+                message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' 
+            });
         }
+
+        // Update last login (skip for now since column doesn't exist)
+        // await connection.execute(
+        //     'UPDATE users SET lastLogin = NOW() WHERE id = ?',
+        //     [user.id]
+        // );
 
         // Generate JWT token
         const expiresIn = rememberMe ? '7d' : '24h';
@@ -220,19 +339,12 @@ app.post('/api/auth/login', async (req, res) => {
             { 
                 userId: user.id, 
                 email: user.email,
-                userType: user.userType 
+                userType: user.userType || 'other',
+                firstName: user.firstName,
+                lastName: user.lastName
             }, 
             JWT_SECRET, 
             { expiresIn }
-        );
-
-        // Store session in database
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + (rememberMe ? 7 : 1));
-
-        await connection.execute(
-            'INSERT INTO sessions (userId, token, expiresAt) VALUES (?, ?, ?)',
-            [user.id, token, expiresAt]
         );
 
         connection.release();
@@ -240,7 +352,11 @@ app.post('/api/auth/login', async (req, res) => {
         // Remove password from response
         delete user.password;
 
+        // Log activity
+        await logActivity(user.id, 'user_login', 'User logged in successfully');
+
         res.json({
+            success: true,
             message: 'เข้าสู่ระบบสำเร็จ',
             token,
             user
@@ -248,26 +364,28 @@ app.post('/api/auth/login', async (req, res) => {
 
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' });
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' 
+        });
     }
 });
 
 app.post('/api/auth/logout', authenticateToken, async (req, res) => {
     try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
+        // Log activity
+        await logActivity(req.user.userId, 'user_logout', 'User logged out');
 
-        const connection = await pool.getConnection();
-        await connection.execute(
-            'DELETE FROM sessions WHERE token = ?',
-            [token]
-        );
-        connection.release();
-
-        res.json({ message: 'ออกจากระบบสำเร็จ' });
+        res.json({ 
+            success: true,
+            message: 'ออกจากระบบสำเร็จ' 
+        });
     } catch (error) {
         console.error('Logout error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการออกจากระบบ' });
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการออกจากระบบ' 
+        });
     }
 });
 
@@ -281,62 +399,156 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
         connection.release();
 
         if (users.length === 0) {
-            return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+            return res.status(404).json({ 
+                success: false,
+                message: 'ไม่พบผู้ใช้' 
+            });
         }
 
-        res.json({ user: users[0] });
+        res.json({ 
+            success: true,
+            user: users[0] 
+        });
     } catch (error) {
         console.error('Verify error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการตรวจสอบ' });
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการตรวจสอบ' 
+        });
+    }
+});
+
+// Dashboard routes
+app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
+    try {
+        const connection = await pool.getConnection();
+        
+        // Get user's booking count
+        const [userBookings] = await connection.execute(
+            'SELECT COUNT(*) as count FROM bookings WHERE userId = ? AND status IN ("confirmed", "completed")',
+            [req.user.userId]
+        );
+
+        // Get user's robot executions count
+        const [userExecutions] = await connection.execute(
+            'SELECT COUNT(*) as count FROM robot_executions WHERE userId = ?',
+            [req.user.userId]
+        );
+
+        // Get total active users
+        const [totalUsers] = await connection.execute('SELECT COUNT(*) as count FROM users WHERE isActive = TRUE');
+        
+        // Get today's bookings
+        const today = new Date().toISOString().split('T')[0];
+        const [todayBookings] = await connection.execute(
+            'SELECT COUNT(*) as count FROM bookings WHERE bookingDate = ? AND status = "confirmed"',
+            [today]
+        );
+
+        connection.release();
+
+        res.json({
+            success: true,
+            stats: {
+                userBookings: userBookings[0].count,
+                userExecutions: userExecutions[0].count,
+                totalUsers: totalUsers[0].count,
+                todayBookings: todayBookings[0].count,
+                systemStatus: 'online',
+                lastUpdated: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard stats error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสถิติ' 
+        });
+    }
+});
+
+// Lab routes
+app.get('/api/labs', authenticateToken, async (req, res) => {
+    try {
+        const connection = await pool.getConnection();
+        const [labs] = await connection.execute(`
+            SELECT 
+                l.*,
+                COUNT(b.id) as currentBookings
+            FROM labs l
+            LEFT JOIN bookings b ON l.id = b.labId 
+                AND b.bookingDate = CURDATE() 
+                AND b.status IN ('confirmed', 'pending')
+            GROUP BY l.id
+            ORDER BY l.name
+        `);
+        connection.release();
+
+        res.json({
+            success: true,
+            labs: labs
+        });
+    } catch (error) {
+        console.error('Labs fetch error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลห้องปฏิบัติการ' 
+        });
     }
 });
 
 // Booking routes
 app.post('/api/booking/create', authenticateToken, async (req, res) => {
     try {
-        const { bookingDate, startTime, duration, purpose } = req.body;
+        const { labId, bookingDate, startTime, duration, purpose } = req.body;
         const userId = req.user.userId;
 
         // Validation
-        if (!bookingDate || !startTime || !duration) {
-            return res.status(400).json({ message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' });
+        if (!labId || !bookingDate || !startTime || !duration) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'กรุณากรอกข้อมูลการจองให้ครบถ้วน' 
+            });
         }
 
-        // Check for conflicting bookings
+        // Check if lab exists and is available
         const connection = await pool.getConnection();
-        const [conflictingBookings] = await connection.execute(
-            `SELECT * FROM bookings 
-             WHERE bookingDate = ? 
-             AND status IN ('pending', 'confirmed')
-             AND (
-                 (startTime <= ? AND startTime + INTERVAL duration MINUTE > ?) OR
-                 (startTime < ? + INTERVAL ? MINUTE AND startTime + INTERVAL duration MINUTE >= ? + INTERVAL ? MINUTE) OR
-                 (startTime >= ? AND startTime + INTERVAL duration MINUTE <= ? + INTERVAL ? MINUTE)
-             )`,
-            [bookingDate, startTime, startTime, startTime, duration, startTime, duration, startTime, startTime, duration]
+        const [labs] = await connection.execute(
+            'SELECT * FROM labs WHERE id = ? AND status = "available"',
+            [labId]
         );
 
-        if (conflictingBookings.length > 0) {
+        if (labs.length === 0) {
             connection.release();
-            return res.status(400).json({ message: 'มีผู้จองในช่วงเวลานี้แล้ว' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'ห้องปฏิบัติการไม่พร้อมใช้งาน' 
+            });
         }
 
         // Create booking
         const [result] = await connection.execute(
-            'INSERT INTO bookings (userId, bookingDate, startTime, duration, purpose) VALUES (?, ?, ?, ?, ?)',
-            [userId, bookingDate, startTime, duration, purpose]
+            'INSERT INTO bookings (userId, labId, bookingDate, startTime, duration, purpose) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, labId, bookingDate, startTime, duration, purpose]
         );
 
         connection.release();
 
+        // Log activity
+        await logActivity(userId, 'booking_created', `Created booking for lab ${labId} on ${bookingDate}`);
+
         res.status(201).json({
+            success: true,
             message: 'จองห้องปฏิบัติการสำเร็จ',
             bookingId: result.insertId
         });
 
     } catch (error) {
         console.error('Booking creation error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการจอง' });
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการจอง' 
+        });
     }
 });
 
@@ -345,39 +557,45 @@ app.get('/api/booking/list', authenticateToken, async (req, res) => {
         const userId = req.user.userId;
         const connection = await pool.getConnection();
         
-        const [bookings] = await connection.execute(
-            `SELECT b.*, u.firstName, u.lastName 
-             FROM bookings b 
-             JOIN users u ON b.userId = u.id 
-             WHERE b.userId = ? 
-             ORDER BY b.bookingDate DESC, b.startTime DESC`,
+        const [bookings] = await connection.execute(`
+            SELECT 
+                b.*,
+                l.name as labName,
+                l.description as labDescription,
+                CONCAT(u.firstName, ' ', u.lastName) as userName
+            FROM bookings b 
+            JOIN labs l ON b.labId = l.id
+            JOIN users u ON b.userId = u.id
+            WHERE b.userId = ? 
+            ORDER BY b.bookingDate DESC, b.startTime DESC`,
             [userId]
         );
 
         connection.release();
-        res.json({ bookings });
+        res.json({ 
+            success: true,
+            bookings: bookings 
+        });
 
     } catch (error) {
         console.error('Booking list error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลการจอง' });
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลการจอง' 
+        });
     }
 });
 
 // Robot control routes
-app.post('/api/robot/upload', authenticateToken, async (req, res) => {
+app.post('/api/robot/execute', authenticateToken, async (req, res) => {
     try {
-        const { code } = req.body;
+        const { code, labId } = req.body;
         const userId = req.user.userId;
 
-        if (!code) {
-            return res.status(400).json({ message: 'กรุณาใส่โค้ด' });
-        }
-
-        // Check if user has valid booking for current time
-        const hasValidBooking = await checkUserBooking(userId);
-        if (!hasValidBooking) {
-            return res.status(403).json({ 
-                message: 'คุณไม่มีสิทธิ์ใช้งานหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน' 
+        if (!code || !labId) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'กรุณาใส่โค้ดและเลือกห้องปฏิบัติการ' 
             });
         }
 
@@ -385,299 +603,157 @@ app.post('/api/robot/upload', authenticateToken, async (req, res) => {
         
         // Record execution
         const [result] = await connection.execute(
-            'INSERT INTO robot_executions (userId, code, status) VALUES (?, ?, ?)',
-            [userId, code, 'running']
+            'INSERT INTO robot_executions (userId, labId, code, status) VALUES (?, ?, ?, ?)',
+            [userId, labId, code, 'running']
         );
 
         connection.release();
 
-        // Send code to Raspberry Pi
-        try {
-            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
-            const response = await fetch(`${raspberryPiUrl}/api/robot/execute`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    code: code,
-                    user_id: userId
-                })
-            });
+        // Log activity
+        await logActivity(userId, 'robot_code_executed', `Executed robot code in lab ${labId}`);
 
-            const piResponse = await response.json();
-            
-            if (response.ok) {
-                res.json({
-                    message: 'อัปโหลดโค้ดสำเร็จและเริ่มรันบนหุ่นยนต์',
-                    executionId: result.insertId,
-                    robotStatus: piResponse.status
-                });
-            } else {
-                res.status(500).json({ 
-                    message: 'เกิดข้อผิดพลาดในการส่งโค้ดไปยังหุ่นยนต์',
-                    error: piResponse.error 
-                });
+        // Simulate robot execution
+        setTimeout(async () => {
+            try {
+                const connection = await pool.getConnection();
+                await connection.execute(
+                    'UPDATE robot_executions SET status = "completed", completedAt = NOW(), executionTime = 5 WHERE id = ?',
+                    [result.insertId]
+                );
+                connection.release();
+            } catch (error) {
+                console.error('Error updating execution status:', error);
             }
-        } catch (piError) {
-            console.error('Raspberry Pi communication error:', piError);
-            res.status(500).json({ 
-                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
-            });
-        }
+        }, 5000);
+
+        res.json({
+            success: true,
+            message: 'เริ่มรันโค้ดบนหุ่นยนต์แล้ว',
+            executionId: result.insertId,
+            status: 'running'
+        });
 
     } catch (error) {
-        console.error('Robot upload error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปโหลดโค้ด' });
+        console.error('Robot execution error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการรันโค้ด' 
+        });
     }
 });
 
-// Check if user has valid booking for current time
-async function checkUserBooking(userId) {
+// Camera routes
+app.post('/api/camera/start-stream', authenticateToken, async (req, res) => {
     try {
+        const { labId } = req.body;
+        const userId = req.user.userId;
+
+        if (!labId) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'กรุณาเลือกห้องปฏิบัติการ' 
+            });
+        }
+
         const connection = await pool.getConnection();
-        const now = new Date();
-        const currentDate = now.toISOString().split('T')[0];
-        const currentTime = now.toTimeString().split(' ')[0];
         
-        const [bookings] = await connection.execute(
-            `SELECT * FROM bookings 
-             WHERE userId = ? 
-             AND bookingDate = ? 
-             AND status = 'confirmed'
-             AND startTime <= ? 
-             AND startTime + INTERVAL duration MINUTE > ?`,
-            [userId, currentDate, currentTime, currentTime]
+        // Create camera session
+        const [result] = await connection.execute(
+            'INSERT INTO camera_sessions (userId, labId, sessionType, status) VALUES (?, ?, ?, ?)',
+            [userId, labId, 'stream', 'active']
         );
-        
+
         connection.release();
-        return bookings.length > 0;
-    } catch (error) {
-        console.error('Error checking user booking:', error);
-        return false;
-    }
-}
 
-app.get('/api/robot/status', authenticateToken, async (req, res) => {
+        // Log activity
+        await logActivity(userId, 'camera_stream_started', `Started camera stream in lab ${labId}`);
+
+        res.json({
+            success: true,
+            message: 'เริ่มการถ่ายทอดสดแล้ว',
+            sessionId: result.insertId,
+            streamUrl: `/api/camera/stream/${result.insertId}`
+        });
+
+    } catch (error) {
+        console.error('Camera stream start error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการเริ่มการถ่ายทอดสด' 
+        });
+    }
+});
+
+// History routes
+app.get('/api/history', authenticateToken, async (req, res) => {
     try {
-        // Check if user has valid booking
-        const hasValidBooking = await checkUserBooking(req.user.userId);
+        const userId = req.user.userId;
+        const { type, date, search } = req.query;
         
-        // Get robot status from Raspberry Pi
-        try {
-            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
-            const response = await fetch(`${raspberryPiUrl}/api/robot/status`);
-            const piResponse = await response.json();
-            
-            if (response.ok) {
-                res.json({
-                    robot: 'online',
-                    camera: 'online',
-                    connection: 'stable',
-                    currentUser: req.user.userId,
-                    hasValidBooking: hasValidBooking,
-                    robotStatus: piResponse.status
-                });
-            } else {
-                res.json({
-                    robot: 'offline',
-                    camera: 'offline',
-                    connection: 'unstable',
-                    currentUser: req.user.userId,
-                    hasValidBooking: hasValidBooking,
-                    error: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้'
-                });
-            }
-        } catch (piError) {
-            res.json({
-                robot: 'offline',
-                camera: 'offline',
-                connection: 'unstable',
-                currentUser: req.user.userId,
-                hasValidBooking: hasValidBooking,
-                error: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้'
-            });
-        }
-    } catch (error) {
-        console.error('Robot status error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงสถานะ' });
-    }
-});
+        const connection = await pool.getConnection();
+        
+        let whereClause = 'WHERE userId = ?';
+        let params = [userId];
 
-app.post('/api/robot/control', authenticateToken, async (req, res) => {
-    try {
-        const { command, speed, duration } = req.body;
-        const userId = req.user.userId;
-
-        // Check if user has valid booking
-        const hasValidBooking = await checkUserBooking(userId);
-        if (!hasValidBooking) {
-            return res.status(403).json({ 
-                message: 'คุณไม่มีสิทธิ์ควบคุมหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน' 
-            });
+        if (type && type !== 'all') {
+            whereClause += ' AND type = ?';
+            params.push(type);
         }
 
-        // Send command to Raspberry Pi
-        try {
-            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
-            const response = await fetch(`${raspberryPiUrl}/api/robot/control`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    command: command,
-                    speed: speed || 50,
-                    duration: duration,
-                    user_id: userId
-                })
-            });
-
-            const piResponse = await response.json();
-            
-            if (response.ok) {
-                res.json({
-                    message: `คำสั่ง ${command} ถูกส่งไปยังหุ่นยนต์แล้ว`,
-                    robotStatus: piResponse.status
-                });
-            } else {
-                res.status(500).json({ 
-                    message: 'เกิดข้อผิดพลาดในการส่งคำสั่งไปยังหุ่นยนต์',
-                    error: piResponse.error 
-                });
-            }
-        } catch (piError) {
-            console.error('Raspberry Pi communication error:', piError);
-            res.status(500).json({ 
-                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
-            });
+        if (date) {
+            whereClause += ' AND DATE(createdAt) = ?';
+            params.push(date);
         }
+
+        if (search) {
+            whereClause += ' AND (action LIKE ? OR details LIKE ?)';
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        const [activities] = await connection.execute(`
+            SELECT 
+                id,
+                action,
+                details,
+                createdAt,
+                'activity' as type
+            FROM activity_logs 
+            ${whereClause}
+            ORDER BY createdAt DESC
+            LIMIT 100
+        `, params);
+
+        connection.release();
+
+        res.json({
+            success: true,
+            activities: activities
+        });
 
     } catch (error) {
-        console.error('Robot control error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการควบคุมหุ่นยนต์' });
+        console.error('History error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลประวัติ' 
+        });
     }
-});
-
-app.post('/api/robot/stop', authenticateToken, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-
-        // Check if user has valid booking
-        const hasValidBooking = await checkUserBooking(userId);
-        if (!hasValidBooking) {
-            return res.status(403).json({ 
-                message: 'คุณไม่มีสิทธิ์ควบคุมหุ่นยนต์ในเวลานี้ กรุณาจองเวลาก่อน' 
-            });
-        }
-
-        // Send stop command to Raspberry Pi
-        try {
-            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
-            const response = await fetch(`${raspberryPiUrl}/api/robot/stop`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: userId
-                })
-            });
-
-            const piResponse = await response.json();
-            
-            if (response.ok) {
-                res.json({
-                    message: 'หยุดหุ่นยนต์แล้ว',
-                    robotStatus: piResponse.status
-                });
-            } else {
-                res.status(500).json({ 
-                    message: 'เกิดข้อผิดพลาดในการหยุดหุ่นยนต์',
-                    error: piResponse.error 
-                });
-            }
-        } catch (piError) {
-            console.error('Raspberry Pi communication error:', piError);
-            res.status(500).json({ 
-                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
-            });
-        }
-
-    } catch (error) {
-        console.error('Robot stop error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการหยุดหุ่นยนต์' });
-    }
-});
-
-app.get('/api/robot/sensors', authenticateToken, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-
-        // Check if user has valid booking
-        const hasValidBooking = await checkUserBooking(userId);
-        if (!hasValidBooking) {
-            return res.status(403).json({ 
-                message: 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลเซนเซอร์ในเวลานี้ กรุณาจองเวลาก่อน' 
-            });
-        }
-
-        // Get sensor data from Raspberry Pi
-        try {
-            const raspberryPiUrl = process.env.RASPBERRY_PI_URL || 'http://localhost:5000';
-            const response = await fetch(`${raspberryPiUrl}/api/robot/sensors`);
-            const piResponse = await response.json();
-            
-            if (response.ok) {
-                res.json({
-                    success: true,
-                    sensors: piResponse.sensors
-                });
-            } else {
-                res.status(500).json({ 
-                    message: 'เกิดข้อผิดพลาดในการดึงข้อมูลเซนเซอร์',
-                    error: piResponse.error 
-                });
-            }
-        } catch (piError) {
-            console.error('Raspberry Pi communication error:', piError);
-            res.status(500).json({ 
-                message: 'ไม่สามารถเชื่อมต่อกับหุ่นยนต์ได้ กรุณาตรวจสอบการเชื่อมต่อ' 
-            });
-        }
-
-    } catch (error) {
-        console.error('Robot sensors error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลเซนเซอร์' });
-    }
-});
-
-// Serve static files
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, 'register.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({ message: 'เกิดข้อผิดพลาดในเซิร์ฟเวอร์' });
+    res.status(500).json({ 
+        success: false,
+        message: 'เกิดข้อผิดพลาดในเซิร์ฟเวอร์' 
+    });
 });
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ message: 'ไม่พบหน้าเว็บที่ต้องการ' });
+    res.status(404).json({ 
+        success: false,
+        message: 'ไม่พบ API endpoint ที่ต้องการ' 
+    });
 });
 
 // Start server
@@ -685,10 +761,12 @@ async function startServer() {
     await initializeDatabase();
     
     app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-        console.log(`Frontend: http://localhost:${PORT}`);
-        console.log(`API: http://localhost:${PORT}/api`);
+        console.log('🚀 Robot Control Lab Backend Server Started!');
+        console.log(`📍 Port: ${PORT}`);
+        console.log(`🌐 API: http://localhost:${PORT}/api`);
+        console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
+        console.log('✅ Ready to serve React frontend!');
     });
 }
 
-startServer().catch(console.error); 
+startServer().catch(console.error);

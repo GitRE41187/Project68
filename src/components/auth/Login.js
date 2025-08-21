@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaRobot, FaEnvelope, FaLock, FaSignInAlt } from 'react-icons/fa';
+import { FaRobot, FaEnvelope, FaLock, FaSignInAlt, FaEye, FaEyeSlash } from 'react-icons/fa';
 import './Auth.css';
 
 const Login = () => {
@@ -12,9 +12,11 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -31,7 +33,6 @@ const Login = () => {
 
     try {
       const result = await login(formData.email, formData.password);
-      
       if (result.success) {
         navigate('/main-menu');
       } else {
@@ -42,6 +43,10 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -56,6 +61,12 @@ const Login = () => {
         </div>
         
         <div className="login-body">
+          {location.state?.message && (
+            <div className="alert alert-success" role="alert">
+              {location.state.message}
+            </div>
+          )}
+          
           {error && (
             <div className="alert alert-danger" role="alert">
               {error}
@@ -73,6 +84,7 @@ const Login = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
               />
               <label htmlFor="email">
                 <FaEnvelope className="me-2" />
@@ -80,9 +92,9 @@ const Login = () => {
               </label>
             </div>
             
-            <div className="form-floating">
+            <div className="form-floating password-field">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 className="form-control"
                 id="password"
                 name="password"
@@ -90,25 +102,40 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                autoComplete="current-password"
               />
               <label htmlFor="password">
                 <FaLock className="me-2" />
                 รหัสผ่าน
               </label>
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={togglePasswordVisibility}
+                aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
             </div>
             
-            <div className="form-check mb-3">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="rememberMe"
-                name="rememberMe"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-              />
-              <label className="form-check-label" htmlFor="rememberMe">
-                จดจำฉัน
-              </label>
+            <div className="form-options">
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="rememberMe"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
+                />
+                <label className="form-check-label" htmlFor="rememberMe">
+                  จดจำฉัน
+                </label>
+              </div>
+              
+              <Link to="#" className="forgot-password">
+                ลืมรหัสผ่าน?
+              </Link>
             </div>
             
             <button 
@@ -130,8 +157,8 @@ const Login = () => {
           <p className="mb-2">
             ยังไม่มีบัญชี? <Link to="/register" className="text-decoration-none">สมัครสมาชิก</Link>
           </p>
-          <p className="mb-0">
-            <Link to="#" className="text-decoration-none">ลืมรหัสผ่าน?</Link>
+          <p className="mb-0 text-muted">
+            <small>เข้าสู่ระบบเพื่อเริ่มต้นใช้งานห้องปฏิบัติการหุ่นยนต์</small>
           </p>
         </div>
       </div>

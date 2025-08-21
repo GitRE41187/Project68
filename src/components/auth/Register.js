@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaRobot, FaUser, FaEnvelope, FaPhone, FaUsers, FaLock, FaUserPlus } from 'react-icons/fa';
+import { FaRobot, FaUser, FaEnvelope, FaPhone, FaUsers, FaLock, FaUserPlus, FaGraduationCap, FaBuilding, FaUserTie, FaMicroscope, FaIndustry, FaSchool } from 'react-icons/fa';
 import './Auth.css';
 
 const Register = () => {
@@ -11,6 +11,7 @@ const Register = () => {
     email: '',
     phone: '',
     userType: '',
+    organization: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false
@@ -18,9 +19,19 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState('');
-  
+
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  const userTypeOptions = [
+    { value: 'student', label: 'นักเรียน/นักศึกษา', icon: FaGraduationCap, description: 'สำหรับนักเรียนและนักศึกษาที่ต้องการเรียนรู้การควบคุมหุ่นยนต์' },
+    { value: 'teacher', label: 'ครู/อาจารย์', icon: FaSchool, description: 'สำหรับครูและอาจารย์ที่ต้องการสอนหรือวิจัยเกี่ยวกับหุ่นยนต์' },
+    { value: 'researcher', label: 'นักวิจัย', icon: FaMicroscope, description: 'สำหรับนักวิจัยที่ต้องการทดลองและพัฒนาเทคโนโลยีหุ่นยนต์' },
+    { value: 'business', label: 'ธุรกิจ/องค์กร', icon: FaBuilding, description: 'สำหรับบริษัทและองค์กรที่ต้องการทดสอบหรือพัฒนาผลิตภัณฑ์' },
+    { value: 'engineer', label: 'วิศวกร/ผู้เชี่ยวชาญ', icon: FaUserTie, description: 'สำหรับวิศวกรและผู้เชี่ยวชาญด้านหุ่นยนต์' },
+    { value: 'industry', label: 'ภาคอุตสาหกรรม', icon: FaIndustry, description: 'สำหรับโรงงานและภาคอุตสาหกรรมที่ต้องการใช้หุ่นยนต์' },
+    { value: 'other', label: 'อื่นๆ', icon: FaUsers, description: 'สำหรับผู้ใช้ทั่วไปที่มีความสนใจในหุ่นยนต์' }
+  ];
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -31,50 +42,34 @@ const Register = () => {
 
     // Check password strength
     if (name === 'password') {
-      checkPasswordStrength(value);
-    }
-  };
-
-  const checkPasswordStrength = (password) => {
-    if (password.length === 0) {
-      setPasswordStrength('');
-      return;
-    }
-
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-
-    if (strength <= 2) {
-      setPasswordStrength('weak');
-    } else if (strength <= 3) {
-      setPasswordStrength('medium');
-    } else {
-      setPasswordStrength('strong');
+      const password = value;
+      if (password.length === 0) {
+        setPasswordStrength('');
+      } else if (password.length < 8) {
+        setPasswordStrength('weak');
+      } else if (password.length < 12) {
+        setPasswordStrength('medium');
+      } else {
+        setPasswordStrength('strong');
+      }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    // Validate passwords match
+    
     if (formData.password !== formData.confirmPassword) {
       setError('รหัสผ่านไม่ตรงกัน');
-      setLoading(false);
       return;
     }
 
-    // Validate password strength
-    if (passwordStrength === 'weak') {
-      setError('รหัสผ่านต้องมีความแข็งแกร่งมากกว่านี้');
-      setLoading(false);
+    if (!formData.agreeTerms) {
+      setError('กรุณายอมรับเงื่อนไขการใช้งาน');
       return;
     }
+
+    setLoading(true);
+    setError('');
 
     try {
       const userData = {
@@ -83,14 +78,16 @@ const Register = () => {
         email: formData.email,
         phone: formData.phone,
         userType: formData.userType,
-        password: formData.password
+        organization: formData.organization,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
       };
 
       const result = await register(userData);
       
       if (result.success) {
         navigate('/login', { 
-          state: { message: 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ' }
+          state: { message: 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ' } 
         });
       } else {
         setError(result.error);
@@ -101,6 +98,8 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  const selectedUserType = userTypeOptions.find(option => option.value === formData.userType);
 
   return (
     <div className="auth-page">
@@ -159,7 +158,7 @@ const Register = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="form-floating">
               <input
                 type="email"
@@ -176,7 +175,7 @@ const Register = () => {
                 อีเมล
               </label>
             </div>
-            
+
             <div className="form-floating">
               <input
                 type="tel"
@@ -193,7 +192,7 @@ const Register = () => {
                 เบอร์โทรศัพท์
               </label>
             </div>
-            
+
             <div className="form-floating">
               <select
                 className="form-select"
@@ -204,10 +203,11 @@ const Register = () => {
                 required
               >
                 <option value="">เลือกประเภทผู้ใช้</option>
-                <option value="student">นักเรียน/นักศึกษา</option>
-                <option value="teacher">ครู/อาจารย์</option>
-                <option value="researcher">นักวิจัย</option>
-                <option value="other">อื่นๆ</option>
+                {userTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <label htmlFor="userType">
                 <FaUsers className="me-2" />
@@ -215,6 +215,36 @@ const Register = () => {
               </label>
             </div>
             
+            {selectedUserType && (
+              <div className="user-type-info">
+                <div className="user-type-icon">
+                  {React.createElement(selectedUserType.icon)}
+                </div>
+                <div className="user-type-details">
+                  <h6>{selectedUserType.label}</h6>
+                  <p>{selectedUserType.description}</p>
+                </div>
+              </div>
+            )}
+            
+            {formData.userType && (formData.userType === 'business' || formData.userType === 'industry' || formData.userType === 'organization') && (
+              <div className="form-floating">
+                <input
+                  type="text"
+                  className="form-control"
+                  id="organization"
+                  name="organization"
+                  placeholder="ชื่อองค์กร/บริษัท"
+                  value={formData.organization}
+                  onChange={handleChange}
+                />
+                <label htmlFor="organization">
+                  <FaBuilding className="me-2" />
+                  ชื่อองค์กร/บริษัท
+                </label>
+              </div>
+            )}
+             
             <div className="form-floating">
               <input
                 type="password"
@@ -231,15 +261,7 @@ const Register = () => {
                 รหัสผ่าน
               </label>
             </div>
-            
-            {passwordStrength && (
-              <div className={`password-strength ${passwordStrength}`}>
-                {passwordStrength === 'weak' && 'รหัสผ่านอ่อนแอ'}
-                {passwordStrength === 'medium' && 'รหัสผ่านปานกลาง'}
-                {passwordStrength === 'strong' && 'รหัสผ่านแข็งแกร่ง'}
-              </div>
-            )}
-            
+
             <div className="form-floating">
               <input
                 type="password"
@@ -257,6 +279,14 @@ const Register = () => {
               </label>
             </div>
             
+            {passwordStrength && (
+              <div className={`password-strength ${passwordStrength}`}>
+                {passwordStrength === 'weak' && 'รหัสผ่านอ่อนแอ - ควรใช้ตัวอักษรผสมตัวเลขและสัญลักษณ์'}
+                {passwordStrength === 'medium' && 'รหัสผ่านปานกลาง - ดีขึ้นแล้ว แต่ยังสามารถปรับปรุงได้'}
+                {passwordStrength === 'strong' && 'รหัสผ่านแข็งแกร่ง - ปลอดภัยและดีเยี่ยม!'}
+              </div>
+            )}
+            
             <div className="form-check mb-3">
               <input
                 className="form-check-input"
@@ -268,7 +298,7 @@ const Register = () => {
                 required
               />
               <label className="form-check-label" htmlFor="agreeTerms">
-                ฉันยอมรับ <Link to="#" className="text-decoration-none">ข้อกำหนดการใช้งาน</Link> และ <Link to="#" className="text-decoration-none">นโยบายความเป็นส่วนตัว</Link>
+                ฉันยอมรับ <Link to="#" className="text-decoration-none">เงื่อนไขการใช้งาน</Link> และ <Link to="#" className="text-decoration-none">นโยบายความเป็นส่วนตัว</Link>
               </label>
             </div>
             
@@ -288,8 +318,11 @@ const Register = () => {
         </div>
         
         <div className="register-footer">
-          <p className="mb-0">
+          <p className="mb-2">
             มีบัญชีอยู่แล้ว? <Link to="/login" className="text-decoration-none">เข้าสู่ระบบ</Link>
+          </p>
+          <p className="mb-0 text-muted">
+            <small>สมัครสมาชิกเพื่อเข้าถึงห้องปฏิบัติการหุ่นยนต์</small>
           </p>
         </div>
       </div>

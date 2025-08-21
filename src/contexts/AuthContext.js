@@ -85,7 +85,61 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization'];
   };
 
-  // Update user profile
+  // Update user profile (includes password change)
+  const updateUser = async (userData) => {
+    try {
+      let response;
+      
+      if (userData.newPassword) {
+        // Handle password change
+        response = await axios.put('/api/auth/change-password', {
+          currentPassword: userData.currentPassword,
+          newPassword: userData.newPassword
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Update profile data separately
+        const profileData = {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          organization: userData.organization
+        };
+        
+        const profileResponse = await axios.put('/api/auth/profile', profileData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        setUser(profileResponse.data.user);
+      } else {
+        // Handle profile update only
+        const profileData = {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          organization: userData.organization
+        };
+        
+        response = await axios.put('/api/auth/profile', profileData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        setUser(response.data.user);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล' 
+      };
+    }
+  };
+
+  // Update user profile (legacy function)
   const updateProfile = async (profileData) => {
     try {
       const response = await axios.put('/api/auth/profile', profileData, {
@@ -101,7 +155,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Change password
+  // Change password (legacy function)
   const changePassword = async (currentPassword, newPassword) => {
     try {
       await axios.put('/api/auth/change-password', {
@@ -127,6 +181,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
     updateProfile,
     changePassword
   };

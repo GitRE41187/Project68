@@ -7,9 +7,11 @@ import MainMenu from './components/MainMenu';
 import DashboardOverview from './components/dashboard/DashboardOverview';
 import Booking from './components/booking/Booking';
 import RobotControl from './components/robot/RobotControl';
-import Camera from './components/camera/Camera';
+
 import History from './components/history/History';
 import Help from './components/help/Help';
+import AccountSettings from './components/settings/AccountSettings';
+import AdminMonitor from './components/admin/AdminMonitor';
 import Navigation from './components/common/Navigation';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
@@ -18,6 +20,21 @@ import './App.css';
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Admin Route Component (for teachers and engineers only)
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user?.userType !== 'teacher' && user?.userType !== 'engineer') {
+    return <Navigate to="/main-menu" replace />;
+  }
+  
+  return children;
 };
 
 // App Routes Component
@@ -69,12 +86,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      <Route path="/camera" element={
-        <ProtectedRoute>
-          <Navigation />
-          <Camera />
-        </ProtectedRoute>
-      } />
+      {/* Camera functionality is now combined with Robot Control */}
       
       <Route path="/history" element={
         <ProtectedRoute>
@@ -83,11 +95,26 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <Navigation />
+          <AccountSettings />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/help" element={
         <ProtectedRoute>
           <Navigation />
           <Help />
         </ProtectedRoute>
+      } />
+      
+      {/* Admin Routes */}
+      <Route path="/admin/monitor" element={
+        <AdminRoute>
+          <Navigation />
+          <AdminMonitor />
+        </AdminRoute>
       } />
       
       {/* Catch all route */}
